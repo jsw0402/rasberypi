@@ -1,55 +1,42 @@
+#include <errno.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include <string.h>
+#include <mosquitto.h>
 #include <stdio.h>
-#include <unistd.h>
-#include <wiringPi.h>
-#define SPEAKER 1 // wPi GPIO 1
-#define BASIC_TIME 187 // 박자 기본 시간 16분음표의 출력 시간으로 지정
-void tone(int scale, int timing);
-int main()
-{
-	char tone_scale[] = { 'g', 'e', 'e', 'g', 'e', 'c', 'd', 'e',
-		'd', 'c', 'e', 'g', 'C', 'g', 'C', 'g',
-		'C', 'g', 'e', 'g', 'd', 'f', 'e', 'd', 'c' }; // 계이름
-	int time_scale[] = { 4, 2, 2, 2, 2, 4, 4, 2, 2, 2, 2, 4, 3, 1,
-		2, 2, 2, 2, 4, 4, 2, 2, 2, 2, 4 };
-	// 4 : ♩ 3:♪ 2: ♪ 1: ♬	int counter = 0;
-	if (wiringPiSetup() == -1)
-		return 1;
-	softToneCreate(SPEAKER); // 스피커 소리를 출력할 핀 번호 설정
-	for (counter = 0; counter < 25; counter++)
-	{
-		tone(tone_scale[counter], time_scale[counter]); // 함수로 해당 음과 박자
-														//길이를 전달
+#define MQTT_HOSTNAME "localhost"
+#define MQTT_PORT 1883
+#define MQTT_USERNAME "admin"
+#define MQTT_PASSWORD "admin"
+#define MQTT_TOPIC "hello/world"
+int main(int argc, char **argv) {
+	struct mosquitto *mosq = NULL;
+	// 초기화
+	mosquitto_lib_init();
+	// 모스키토 런타임 객체와 클라이언트 랜덤 ID 생성
+	mosq = mosquitto_new(NULL, true, NULL);
+	if (!mosq) {
+		printf("Cant initiallize mosquitto library\n");
+		exit(-1);
 	}
+	21 Publisher 코드
+		mosquitto_username_pw_set(mosq, MQTT_USERNAME, MQTT_PASSWORD);
+	// MQTT 서버 연결 설립, keep-alive 메시지 사용 안함
+	int ret = mosquitto_connect(mosq, MQTT_HOSTNAME, MQTT_PORT, 10);
+	if (ret) {
+		printf("Cant connect to mosquitto server\n");
+		exit(-1);
+	}
+	char text[20] = “I’m CppCode";
+		ret = mosquitto_publish(mosq, NULL, MQTT_TOPIC, strlen(text), text, 0, false);
+	if (ret) {
+		printf("Cant connect to mosquitto server\n");
+		exit(-1);
+	}
+	// 네트워크 동작이 끝나기 전에 모스키토 동작을 막기위해 잠깐의 딜레이가 필요함
+	//sleep(1);
+	mosquitto_disconnect(mosq);
+	mosquitto_destroy(mosq);
+	mosquitto_lib_cleanup();
+	return 0;
 }
-void tone(int scale, int timing){
-	int scale_sound; // 주파수 저장할 변수
-	switch (scale) // 음에 해당하는 주파수를 찾는다.
-	{
-	case 'c':
-		scale_sound = 261;
-		break;
-	case 'd':
-		scale_sound = 293;
-		break;	case 'e':
-		scale_sound = 329;
-		break;
-	case 'f':
-		scale_sound = 349;
-		break;
-	case 'g':
-		scale_sound = 391;
-		break;
-	case 'a':
-		scale_sound = 440;
-		break;
-	case 'b':
-		scale_sound = 493;
-		break;
-	case 'C':
-		scale_sound = 523;
-		break;
-	default:
-		scale_sound = 0;
-		break;
-	}
-	}
