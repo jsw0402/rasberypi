@@ -4,10 +4,18 @@
 #include <string.h>
 #include <unistd.h>
 #include <mosquitto.h>
+#include <wiringPi.h>
 #define mqtt_host "localhost"
 #define mqtt_port 1883
-#define MQTT_TOPIC "hello/world"
+#define MQTT_TOPIC "house/myroom/lamp"
+#define OFF 0
+#define ON 1
+#define LED 4
 static int run = 1;
+int LedFlag = false;
+int LedData = OFF;
+const char* MegON = "ON";
+const char* MegOFF = "OFF";
 void handle_signal(int s)
 {
 	run = 0;
@@ -18,12 +26,22 @@ void connect_callback(struct mosquitto *mosq, void *obj, int result)
 }
 void message_callback(struct mosquitto *mosq, void *obj, const struct mosquitto_message *message)
 {
-	bool match = 0;
 	printf("got message '%.*s' for topic '%s'\n", message->payloadlen, (char*)message->payload, message->topic);
-	//printf("receive message(%s) : %s",message->topic, message->payload);
-	//mosquitto_topic_matches_sub("/devices/wb-adc/controls/+", message->topic, &match);
-	if (match) {
-		printf("got message for ADC topic\n");
+	if (strcmp(MegON, (char*)message->payload) == 0)
+	{
+		LedFlag = true;
+		LedData = ON;
+		printf("LED ON\n");
+	}
+	else if (strcmp(MegOFF, (char*)message->payload) == 0)
+	{
+		LedFlag = true;
+		LedData = OFF;
+		printf("LED OFF\n");
+	}
+	else
+	{
+		printf("LED not\n");
 	}
 }
 
@@ -36,20 +54,29 @@ int main(int argc, char *argv[])
 	signal(SIGINT, handle_signal);
 	signal(SIGTERM, handle_signal);
 	mosquitto_lib_init();
+	wiringPiSetup();
+	pinMode(LED, OUTPUT);
 	mosq = mosquitto_new(NULL, true, 0);//mosquitto 구조체 생성
 	if (mosq) {
 		mosquitto_connect_callback_set(mosq, connect_callback);
 		mosquitto_message_callback_set(mosq, message_callback);
 		rc = mosquitto_connect(mosq, mqtt_host, mqtt_port, 60);//mosqutiio 서버와 연결
 		mosquitto_subscribe(mosq, NULL, MQTT_TOPIC, 0);//subscribe
-		while (run) {
-			rc = mosquitto_loop(mosq, -1, 1);
-			if (run && rc) {
-				printf("connection error!\n");
-				sleep(10);
-				mosquitto_reconnect(mosq);
+		
+			while (run)
+			{
+				rc = mosquitto_loop(mosq, -1, 1);
+				if (run && rc) {
+					printf("connection error!\n");
+					sleep(10);
+					mosquitto_reconnect(mosq);
+				}
+				if (LedFlag == true)
+				{
+					digitalWrite(LED, LedData);
+					LedFlag = false;
+				}
 			}
-		}
 		mosquitto_destroy(mosq);
 	}
 	mosquitto_lib_cleanup();
