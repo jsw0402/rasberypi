@@ -10,11 +10,15 @@ Shared Memory 기법
 Panel 실행
 Panel 실행중 exec 를 통해서 vrm 을 호출
 
+
+
 Pipe 통신 
 
 CCPS 실행
 
 적절한 Performance 확인을 위해 
+
+
 
 Speed 는 80 ~ 100 사이 입력 
 Acceleration 는 8 ~ 10 사이 입력
